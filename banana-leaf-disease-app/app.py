@@ -305,11 +305,9 @@ top_idx = int(np.argmax(probs))
 top_label = CLASS_NAMES[top_idx]
 confidence = float(probs[top_idx])
 
-col_a, col_b = st.columns(2)
-with col_a:
+img_col, _ = st.columns([1, 1])
+with img_col:
     st.image(image, caption="Uploaded image", use_container_width=True)
-with col_b:
-    st.image(enhanced, caption="After CLAHE enhancement", use_container_width=True)
 
 st.subheader(top_label)
 st.progress(confidence, text=f"Confidence {confidence:.1%}")
