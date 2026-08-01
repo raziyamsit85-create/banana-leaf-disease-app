@@ -19,7 +19,11 @@ from tensorflow.keras.applications import VGG16, MobileNetV2
 # Config
 # ----------------------------------------------------------------------------
 
-WEIGHTS_PATH = "banana-leaf-disease-app/vgg16_mobilenet_hybrid_weights.h5"
+# Either filename works — see resolve_weights_path() below.
+WEIGHTS_CANDIDATES = [
+    "vgg16_mobilenet_hybrid_weights.weights.h5",
+    "vgg16_mobilenet_hybrid_weights.h5",
+]
 IMG_SIZE = (224, 224)
 
 # Order must match ImageDataGenerator.class_indices from training (alphabetical)
@@ -52,6 +56,44 @@ st.set_page_config(
 # ----------------------------------------------------------------------------
 
 
+def resolve_weights_path() -> str:
+    """Return a path Keras will load with the correct backend.
+
+    Keras 3 chooses its loader from the filename suffix alone: `.weights.h5`
+    uses the native format, plain `.h5` uses the legacy HDF5 reader. This
+    checkpoint is native format, so if it is sitting under a plain `.h5` name
+    the legacy reader sees zero layers. Detect that and expose the file under a
+    `.weights.h5` alias.
+    """
+    import h5py  # ships with TensorFlow
+
+    path = next((p for p in WEIGHTS_CANDIDATES if os.path.exists(p)), None)
+    if path is None:
+        raise FileNotFoundError(
+            "No weights file found. Expected one of: "
+            + ", ".join(WEIGHTS_CANDIDATES)
+        )
+
+    if path.endswith(".weights.h5"):
+        return path
+
+    with h5py.File(path, "r") as f:
+        is_native = "layers" in f.keys()
+
+    if not is_native:
+        return path  # genuine legacy HDF5 checkpoint
+
+    alias = "/tmp/vgg16_mobilenet_hybrid_weights.weights.h5"
+    if not os.path.exists(alias):
+        try:
+            os.symlink(os.path.abspath(path), alias)
+        except OSError:
+            import shutil
+
+            shutil.copyfile(path, alias)
+    return alias
+
+
 @st.cache_resource(show_spinner="Loading the hybrid model…")
 def load_model():
     """Rebuild the training architecture exactly, then load the trained weights.
@@ -79,11 +121,7 @@ def load_model():
 
     model = Model(inputs=inp, outputs=out, name="VGG16_MobileNetV2_Hybrid")
 
-    if not os.path.exists(WEIGHTS_PATH):
-        raise FileNotFoundError(
-            f"{WEIGHTS_PATH} is missing. Add it to the repository root."
-        )
-    model.load_weights(WEIGHTS_PATH)
+    model.load_weights(resolve_weights_path())
     return model
 
 
