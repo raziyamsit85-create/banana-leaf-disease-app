@@ -19,11 +19,17 @@ from tensorflow.keras.applications import VGG16, MobileNetV2
 # Config
 # ----------------------------------------------------------------------------
 
-# Either filename works — see resolve_weights_path() below.
+# Explicit location, if you keep the weights somewhere specific. Relative paths
+# are tried against both app.py's folder and the working directory. Leave as
+# None to rely on the automatic search below.
+WEIGHTS_PATH = "banana-leaf-disease-app/vgg16_mobilenet_hybrid_weights.h5"
+
+# Fallback filenames, searched when WEIGHTS_PATH doesn't resolve.
 WEIGHTS_CANDIDATES = [
     "vgg16_mobilenet_hybrid_weights.weights.h5",
     "vgg16_mobilenet_hybrid_weights.h5",
 ]
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 IMG_SIZE = (224, 224)
 
 # Order must match ImageDataGenerator.class_indices from training (alphabetical)
@@ -65,13 +71,68 @@ def resolve_weights_path() -> str:
     the legacy reader sees zero layers. Detect that and expose the file under a
     `.weights.h5` alias.
     """
+    import glob
+
     import h5py  # ships with TensorFlow
 
-    path = next((p for p in WEIGHTS_CANDIDATES if os.path.exists(p)), None)
+    search_dirs = [
+        APP_DIR,
+        os.getcwd(),
+        os.path.join(APP_DIR, "banana-leaf-disease-app"),
+        os.path.join(os.getcwd(), "banana-leaf-disease-app"),
+        os.path.join(APP_DIR, "weights"),
+    ]
+    seen = set()
+
+    path = None
+
+    # 1. Explicit setting, resolved against app dir and CWD
+    if WEIGHTS_PATH:
+        for base in (APP_DIR, os.getcwd(), ""):
+            candidate = (
+                WEIGHTS_PATH
+                if os.path.isabs(WEIGHTS_PATH) or not base
+                else os.path.join(base, WEIGHTS_PATH)
+            )
+            if os.path.exists(candidate):
+                path = candidate
+                break
+
+    # 2. Known filenames in likely directories
     if path is None:
+        for d in search_dirs:
+            if d in seen or not os.path.isdir(d):
+                continue
+            seen.add(d)
+            for name in WEIGHTS_CANDIDATES:
+                candidate = os.path.join(d, name)
+                if os.path.exists(candidate):
+                    path = candidate
+                    break
+            if path:
+                break
+
+    # 3. Any .h5 in those directories, or one level below them
+    if path is None:
+        for d in seen:
+            found = sorted(
+                glob.glob(os.path.join(d, "*.h5"))
+                + glob.glob(os.path.join(d, "*", "*.h5"))
+            )
+            if found:
+                path = found[0]
+                break
+
+    if path is None:
+        listing = []
+        for d in seen:
+            entries = sorted(os.listdir(d))[:25]
+            listing.append(f"{d} -> {entries if entries else 'empty'}")
         raise FileNotFoundError(
-            "No weights file found. Expected one of: "
-            + ", ".join(WEIGHTS_CANDIDATES)
+            "No .h5 weights file found. Set WEIGHTS_PATH at the top of app.py "
+            "to the file's location, or put "
+            f"'{WEIGHTS_CANDIDATES[0]}' next to app.py.\n\n"
+            "Searched:\n" + "\n".join(listing)
         )
 
     if path.endswith(".weights.h5"):
