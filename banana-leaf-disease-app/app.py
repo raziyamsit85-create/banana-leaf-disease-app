@@ -16,7 +16,7 @@ from tensorflow.keras.applications import VGG16, MobileNetV2
 
 # ----------------------------- config -----------------------------
 IMG_SIZE = (224, 224)
-WEIGHTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vgg16_mobilenet_hybrid_weights.h5")
+WEIGHTS_PATH = "banana-leaf-disease-app/vgg16_mobilenet_hybrid_weights.h5"
 
 CLASS_NAMES = [
     "Banana Healthy Leaf",
