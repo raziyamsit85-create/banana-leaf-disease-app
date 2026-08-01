@@ -221,6 +221,8 @@ def prepare_input(pil_img: Image.Image):
 
 # ----------------------------------------------------------------------------
 # Grad-CAM (VGG16 branch, block5_conv3)
+# Kept for reference — not shown in the UI. To re-enable, call grad_cam() and
+# overlay_heatmap() and render the result as a third column.
 # ----------------------------------------------------------------------------
 
 
@@ -275,7 +277,6 @@ to a 128-unit dense layer with dropout before the softmax head.
 4. Rescale to [0, 1]
 """
     )
-    show_cam = st.checkbox("Show Grad-CAM (VGG16 branch)", value=True)
     st.divider()
     st.caption("Research demo. Not a substitute for field diagnosis by an agronomist.")
 
@@ -304,21 +305,11 @@ top_idx = int(np.argmax(probs))
 top_label = CLASS_NAMES[top_idx]
 confidence = float(probs[top_idx])
 
-col_a, col_b, col_c = st.columns(3)
+col_a, col_b = st.columns(2)
 with col_a:
     st.image(image, caption="Uploaded image", use_container_width=True)
 with col_b:
     st.image(enhanced, caption="After CLAHE enhancement", use_container_width=True)
-with col_c:
-    if show_cam:
-        cam = grad_cam(model, batch, top_idx)
-        st.image(
-            overlay_heatmap(enhanced, cam),
-            caption="Grad-CAM · VGG16 block5_conv3",
-            use_container_width=True,
-        )
-    else:
-        st.empty()
 
 st.subheader(top_label)
 st.progress(confidence, text=f"Confidence {confidence:.1%}")
