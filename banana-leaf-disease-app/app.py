@@ -19,7 +19,7 @@ from tensorflow.keras.applications import VGG16, MobileNetV2
 # Config
 # ----------------------------------------------------------------------------
 
-WEIGHTS_PATH = "vgg16_mobilenet_hybrid_weights.h5"
+WEIGHTS_PATH = "banana-leaf-disease-app/vgg16_mobilenet_hybrid_weights.h5"
 IMG_SIZE = (224, 224)
 
 # Order must match ImageDataGenerator.class_indices from training (alphabetical)
